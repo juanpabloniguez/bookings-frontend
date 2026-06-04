@@ -133,7 +133,7 @@ export function ExportButton({ bookings, kpis }: ExportButtonProps) {
 
     return (
         <button className="primary-btn btn-primary-action" type="button" onClick={exportar}>
-            Export report
+            {t("dashboard.exportReport")}
         </button>
     );
 }

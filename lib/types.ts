@@ -8,6 +8,8 @@ export type Appointment = {
   customerId: number;
   businessId: number;
   serviceName: string;
+  customerName?: string;
+  businessName?: string;
 };
 
 //customers
@@ -17,12 +19,14 @@ export type Customer = {
   phone: string;
   email: string;
   business: string;
+  businessId?: number;
 };
 
 //businesses
 export type Business = {
   businessID: number;
   name: string;
+  email?: string;
 };
 
 //payments
@@ -35,6 +39,7 @@ export type Payment = {
   paymentMethod: string;
   appointmentId: number;
   customerId: number;
+  businessId?: number;
   status: PaymentStatus;
   notes?: string;
   customerName?: string;

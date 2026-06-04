@@ -7,7 +7,7 @@ import { useLanguage } from "@/context/LanguageContext";
 interface UserProfile {
   name: string;
   lastName: string;
-  birthDate: string;
+  business?: string;
   email: string;
 }
 
@@ -25,17 +25,24 @@ export default function ProfilePage() {
       setUser({
         name: "Administrador",
         lastName: "Sistema",
-        birthDate: "1990-01-01",
+        business: "",
         email: "admin@admin.com",
       });
     }
   }, []);
 
   const handleLogout = () => {
-    router.push("/login");
+    // Limpia TODOS los datos de sesión/caché para evitar acceso no autorizado
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace("/login");
   };
 
   if (!user) return null;
+
+  const isAdmin = user.email?.toLowerCase().endsWith("@admin.com");
+  const roleBadge = isAdmin ? t("profile.role_admin") : t("profile.role_business");
+  const roleDetail = isAdmin ? t("profile.role_admin_detail") : t("profile.role_business_detail");
 
   return (
     <div className="page-stack">
@@ -53,7 +60,7 @@ export default function ProfilePage() {
           </div>
           <div className="profile-main-info">
             <h3>{user.name} {user.lastName}</h3>
-            <span className="badge badge--confirmed">{t("profile.administrator")}</span>
+            <span className={`badge ${isAdmin ? 'badge--confirmed' : 'badge--paid'}`}>{roleBadge}</span>
           </div>
         </div>
 
@@ -68,11 +75,11 @@ export default function ProfilePage() {
           </div>
           <div className="detail-item">
             <label>{t("profile.birth_date")}</label>
-            <p>{new Date(user.birthDate).toLocaleDateString()}</p>
+            <p>{user.business || "—"}</p>
           </div>
           <div className="detail-item">
             <label>{t("profile.user_role")}</label>
-            <p>{t("profile.booking_administrator")}</p>
+            <p>{roleDetail}</p>
           </div>
         </div>
 

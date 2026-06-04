@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { isAdminUser, parseCurrentUser, type CurrentUser } from "@/lib/currentUser";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    setCurrentUser(parseCurrentUser(localStorage.getItem("currentUser")));
+  }, []);
+
+  const showBusinesses = useMemo(() => isAdminUser(currentUser), [currentUser]);
 
   const menuItems = [
     {
@@ -43,7 +52,7 @@ export default function Sidebar() {
 </svg>
       )
     },
-  ];
+  ].filter((item) => (item.href === "/businesses" ? showBusinesses : true));
 
   return (
     <aside className={`admin-sidebar ${isCollapsed ? "admin-sidebar--collapsed" : ""}`}>

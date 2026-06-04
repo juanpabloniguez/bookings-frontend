@@ -60,6 +60,19 @@ function DeleteModal({
   );
 }
 
+function formatBusinessOrDate(val: string) {
+  if (!val) return "—";
+  const timestamp = Date.parse(val);
+  if (!isNaN(timestamp) && val.includes("-") && val.length === 10) {
+    return new Date(val).toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  return val;
+}
+
 function formatDate(iso: string) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -168,7 +181,7 @@ export default function UsersPage() {
                     <tr>
                       <th>Usuario</th>
                       <th>Correo</th>
-                      <th>Fecha de nacimiento</th>
+                      <th>Negocio / Fecha Nac.</th>
                       <th>Registrado</th>
                       <th>Acciones</th>
                     </tr>
@@ -197,7 +210,7 @@ export default function UsersPage() {
                             <i className="bi bi-envelope"></i> {user.email}
                           </span>
                         </td>
-                        <td className="muted-cell">{user.birthDate ? formatDate(user.birthDate) : "—"}</td>
+                        <td className="muted-cell">{user.birthDate ? formatBusinessOrDate(user.birthDate) : "—"}</td>
                         <td className="muted-cell">{formatDate(user.createdAt)}</td>
                         <td>
                           <button

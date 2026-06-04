@@ -156,31 +156,69 @@ function EditBusinessModal({
   );
 }
 
+function DeleteBusinessModal({
+  business,
+  onClose,
+  onDeleted,
+}: {
+  business: Business;
+  onClose: () => void;
+  onDeleted: (id: number) => void;
+}) {
+  const { t } = useLanguage();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteBusiness(business.businessID);
+      onDeleted(business.businessID);
+      onClose();
+    } catch {
+      setError(t("businesses.delete.error"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-icon">!</div>
+        <h3 className="modal-title">{t("businesses.delete.title")}</h3>
+        <p className="modal-text">{t("businesses.delete.text")}</p>
+        <p className="modal-text" style={{ fontSize: 13, color: "var(--muted)", marginTop: -14 }}>
+          {t("businesses.delete.confirm")}
+        </p>
+
+        {error && <p className="message-error" style={{ marginBottom: 16 }}>{error}</p>}
+
+        <div className="modal-actions">
+          <button className="secondary-btn" onClick={onClose} disabled={loading}>
+            {t("businesses.form.cancel")}
+          </button>
+          <button className="danger-btn" onClick={handleDelete} disabled={loading}>
+            {loading ? t("businesses.delete.deleting") : t("businesses.delete.action")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BusinessCard({
   business,
-  onDelete,
+  onDeleteRequest,
   onUpdated,
 }: {
   business: Business;
-  onDelete: (id: number) => void;
+  onDeleteRequest: (business: Business) => void;
   onUpdated: (business: Business) => void;
 }) {
   const { t } = useLanguage();
-  const [deleting, setDeleting] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-
-  async function handleDelete() {
-    if (!confirm(t("businesses.delete.text"))) return;
-    setDeleting(true);
-    try {
-      await deleteBusiness(business.businessID);
-      onDelete(business.businessID);
-    } catch {
-      alert(t("businesses.delete.error"));
-    } finally {
-      setDeleting(false);
-    }
-  }
 
   return (
     <>
@@ -196,6 +234,12 @@ function BusinessCard({
           <p className="customer-name">#{business.businessID} · {business.name}</p>
         </div>
         <p className="customer-meta">ID: {business.businessID}</p>
+        {business.email && (
+          <p className="customer-meta" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <i className="bi bi-envelope" style={{ fontSize: 13 }}></i>
+            <span>Contacto: {business.email}</span>
+          </p>
+        )}
         <div className="customer-tag">{t("nav.businesses")}</div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -207,12 +251,11 @@ function BusinessCard({
             {t("businesses.edit.action")}
           </button>
           <button
-            onClick={handleDelete}
-            disabled={deleting}
+            onClick={() => onDeleteRequest(business)}
             className="danger-btn"
             style={{ flex: 1 }}
           >
-            {deleting ? t("businesses.delete.deleting") : t("businesses.delete.action")}
+            {t("businesses.delete.action")}
           </button>
         </div>
       </div>
@@ -225,15 +268,40 @@ export default function BusinessesPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [deletingBusiness, setDeletingBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  const loadBusinesses = async () => {
+    try {
+      const data = await getBusinesses();
+      setBusinesses(data);
+      setError(null);
+    } catch {
+      setError(t("businesses.error.load"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getBusinesses()
-      .then(setBusinesses)
-      .catch(() => setError(t("businesses.error.load")))
-      .finally(() => setLoading(false));
+    void loadBusinesses();
   }, [t]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      void loadBusinesses();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
+  }, [t]);
+
+  // Reset visible items when search query changes
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [search]);
 
   const filtered = businesses.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase())
@@ -245,6 +313,13 @@ export default function BusinessesPage() {
         <NewBusinessModal
           onClose={() => setShowModal(false)}
           onCreated={(b) => setBusinesses((prev) => [...prev, b])}
+        />
+      )}
+      {deletingBusiness && (
+        <DeleteBusinessModal
+          business={deletingBusiness}
+          onClose={() => setDeletingBusiness(null)}
+          onDeleted={(id) => setBusinesses((prev) => prev.filter(b => b.businessID !== id))}
         />
       )}
 
@@ -278,16 +353,30 @@ export default function BusinessesPage() {
         )}
 
         {!loading && (
-          <section className="customer-grid">
-            {filtered.map((business) => (
-              <BusinessCard 
-                key={business.businessID} 
-                business={business} 
-                onDelete={(id) => setBusinesses((prev) => prev.filter(b => b.businessID !== id))}
-                onUpdated={(updated) => setBusinesses((prev) => prev.map((b) => b.businessID === updated.businessID ? updated : b))}
-              />
-            ))}
-          </section>
+          <>
+            <section className="customer-grid">
+              {filtered.slice(0, visibleCount).map((business) => (
+                <BusinessCard 
+                  key={business.businessID} 
+                  business={business} 
+                  onDeleteRequest={setDeletingBusiness}
+                  onUpdated={(updated) => setBusinesses((prev) => prev.map((b) => b.businessID === updated.businessID ? updated : b))}
+                />
+              ))}
+            </section>
+
+            {filtered.length > visibleCount && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setVisibleCount((prev) => prev + 12)}
+                >
+                  {t("action.show_more")}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
